@@ -25,10 +25,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ashokponkumar/github-org-stats/info"
 	"github.com/google/go-github/v39/github"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
+
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -53,11 +56,11 @@ func init() {
 				token = os.Getenv("GITHUB_TOKEN")
 			}
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			ctx := context.Background()
 			client, err := getClient(ctx, token, githubBaseURL)
 			if err != nil {
-				return err
+				logrus.Fatalf("%s", err)
 			}
 			repos, err := repos(ctx, client, org)
 			if err != nil {
@@ -89,16 +92,30 @@ func init() {
 			logrus.Infof("Organization : %s", org)
 			logrus.Infof("No of stars : %d", totalStars)
 			logrus.Infof("No of forks : %d", totalForks)
-			return nil
 		},
 	}
-
 	rootCmd.Flags().StringVarP(&token, tokenC, "t", "", "github personal access token (default $GITHUB_TOKEN)")
 	rootCmd.Flags().StringVarP(&org, orgC, "o", "", "github organisation name")
-
 	rootCmd.MarkFlagRequired(orgC)
-
 	rootCmd.Flags().StringVar(&githubBaseURL, "github-base-url", "", "Github base url, if it is not github.com")
+
+	long := false
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print the version information",
+		Long:  "Print the version information",
+		Run: func(*cobra.Command, []string) {
+			if !long {
+				fmt.Println(info.GetVersion())
+				return
+			}
+			v := info.GetVersionInfo()
+			ver, _ := yaml.Marshal(v)
+			fmt.Println(string(ver))
+		},
+	}
+	versionCmd.Flags().BoolVarP(&long, "long", "l", false, "Print the version details.")
+	rootCmd.AddCommand(versionCmd)
 }
 
 func main() {
